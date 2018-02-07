@@ -1,0 +1,80 @@
+#Libraries
+install.packages("rvest")
+library(rvest)
+
+#Set URl
+url = "https://www.tripadvisor.co.hu/Hotel_Review-g1077268-d301614-Reviews-or10-Hunguest_Grandhotel_Galya-Galyateto_Heves_County_Northern_Hungary.html"
+
+page = read_html(url)
+  reviews <- url %>%
+  read_html() %>%
+  html_nodes(".review-container")
+
+#format data into lists
+
+ID
+id <- reviews %>%
+  html_node(".quote a") %>%
+  html_attr("id")
+
+Quote
+quote <- reviews %>%
+  html_node(".quote span") %>%
+  html_text()
+
+Rating
+rating <- reviews %>%
+  html_node(".ui_bubble_rating")
+rating <- gsub(".*ui_bubble_rating bubble_","",rating)
+rating <- gsub("0.*","",rating)
+rating <- gsub("\"></span>","",rating)
+rating <- gsub("\"></div>\n","",rating)
+rating <-as.numeric(rating)
+
+Review
+review <- reviews %>%
+  html_node(".entry .partial_entry") %>%
+  html_text()
+
+#Credits goes to: https://github.com/hadley/rvest/blob/master/demo/tripadvisor.R for doing most of the pre-work for this.
+
+# create dataframe from lists
+tripdata <- data.frame(id, quote, rating, review, stringsAsFactors = FALSE)
+
+#Google Language API installation
+devtools::install_github("ropensci/googleLanguageR")
+library(googleLanguageR)
+
+#Auth - Remember to put this in your work folder
+gl_auth("service.json")
+
+#translate
+tripdata$reviewTranslated <- googleLanguageR::gl_translate(tripdata$review,"en")
+tripdata$quoteTranslated <- googleLanguageR::gl_translate(tripdata$quote,"en")
+
+comments <- gl_nlp(tripdata2$translatedText, nlp_type = c("annotateText", "analyzeEntities",
+                            "analyzeSentiment", "analyzeSyntax", "analyzeEntitySentiment"),
+                            type = c("PLAIN_TEXT"), language = c("en"))
+
+#Format entities (what is said)
+entities <- comments$entities
+entitiesFormatted <- data.frame(unlist(lapply(entities, '[[', 1)),unlist(lapply(entities, '[[', 2)),unlist(lapply(entities, '[[', 3)),unlist(lapply(entities, '[[', 9)))
+names(entitiesFormatted) <- c("Name", "Type", "Salience", "Mention")
+
+title <- gl_nlp(tripdata2$translatedText.1, nlp_type = c("annotateText", "analyzeEntities",
+                                                       "analyzeSentiment", "analyzeSyntax", "analyzeEntitySentiment"),
+                type = c("PLAIN_TEXT"), language = c("en"))
+
+#Understand tone of voice
+score <- data.frame(tripdata2$translatedText.1,comments$documentSentiment)
+names(score) <- c("Title", "Magnitude", "Sentiment")
+
+#install the package and link it to our Google Sheet:
+install.package(“googlesheets”)
+library(googlesheets)
+googlesheets::gs_auth()
+superweek <- gs_title("superweek", verbose = TRUE)
+
+gs_edit_cells(superweek, ws = "Sheet1", input = entitiesFormatted)
+gs_edit_cells(superweek, ws = "Sheet2", input = score)
+
