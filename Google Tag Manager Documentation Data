@@ -49,10 +49,10 @@ gar_auth()
 googleTagManageR::gtm_accounts_list()
 
 #Select the account ID
-Account <- "262854"
+Account <- "12345"
 #Find the container
 GTMContainer <- gtm_containers_list(Account)
-GTMID <- "8201240"
+GTMID <- "1234567"
 
 ######Extract data know that everything is pulled from the container
 # tags
