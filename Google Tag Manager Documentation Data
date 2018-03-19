@@ -1,0 +1,207 @@
+#install libraries
+install.packages("tibble")
+library(tibble)
+install.packages('devtools')
+devtools::install_github("sailthru/tidyjson")
+devtools::install_github('IronistM/googleTagManageR')
+library(googleTagManageR)
+library(plyr)
+library(googleAuthR)
+library(googlesheets)
+library(stringr)
+
+
+#Set your clientID and Client Secret
+options("googleAuthR.client_id" = "12345.apps.googleusercontent.com")
+options("googleAuthR.client_secret" = "6789")
+
+#all the libraries you are going to need + Google Analytics should you need to do something there
+need <- c("https://www.googleapis.com/auth/analytics",
+          "https://www.googleapis.com/auth/analytics.edit",
+          "https://www.googleapis.com/auth/analytics.manage.users",
+          "https://www.googleapis.com/auth/analytics.manage.users.readonly",
+          "https://www.googleapis.com/auth/analytics.provision",
+          "https://www.googleapis.com/auth/analytics.readonly",
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.appdata",
+          "https://www.googleapis.com/auth/drive.file",
+          "https://www.googleapis.com/auth/drive.metadata",
+          "https://www.googleapis.com/auth/drive.metadata.readonly",
+          "https://www.googleapis.com/auth/drive.photos.readonly",
+          "https://www.googleapis.com/auth/drive.readonly",
+          "https://www.googleapis.com/auth/drive.scripts",
+          "https://www.googleapis.com/auth/webmasters.readonly",
+          "https://www.googleapis.com/auth/webmasters",
+          "https://www.googleapis.com/auth/tagmanager.delete.containers",
+          "https://www.googleapis.com/auth/tagmanager.edit.containers",
+          "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+          "https://www.googleapis.com/auth/tagmanager.manage.accounts",
+          "https://www.googleapis.com/auth/tagmanager.manage.users",
+          "https://www.googleapis.com/auth/tagmanager.publish",
+          "https://www.googleapis.com/auth/tagmanager.readonly"
+          )
+
+#setting scopes and authenticating
+options(googleAuthR.scopes.selected = need)
+gar_auth()
+
+#Get ID's and find the account you are looking for
+googleTagManageR::gtm_accounts_list()
+
+#Select the account ID
+Account <- "262854"
+#Find the container
+GTMContainer <- gtm_containers_list(Account)
+GTMID <- "8201240"
+
+######Extract data know that everything is pulled from the container
+# tags
+tags <- gtm_tags_list(Account,GTMID)
+tags$accountId <- NULL
+tags$containerId <- NULL
+tags$tagId <- NULL
+
+#Triggers
+triggers <- gtm_triggers_list(Account,GTMID)
+triggerName <- data.frame(triggers[["triggers"]][["name"]])
+triggerType <- data.frame(triggers[["triggers"]][["type"]])
+triggerID <- data.frame(triggers[["triggers"]][["triggerId"]])
+
+#Trigger rules
+
+#Make a while loop to add the same extraction for all trigger rules
+totalRows <- as.integer(nrow(triggerName))
+counterRows <- 0
+triggerRulesDF <- data.frame("")
+names(triggerRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  triggerRules <- triggers[["triggers"]][["customEventFilter"]][[counterRows]][["parameter"]][[1]][["value"]]
+  triggerRules <- paste( unlist(triggerRules), collapse=' matches: ')
+  triggerRulesDF <- add_row(triggerRulesDF,rule = triggerRules)
+}
+#create dataframe for the trigger rules that describes all custom events
+triggerRulesDF <- data.frame(triggerRulesDF[-1, ])
+
+#combine things into a new dataframe
+triggers <- data.frame(c(triggerName,triggerType,triggerID,triggerRulesDF))
+
+#Rename columns to something pretty
+names(triggers)[1] <- "name"
+names(triggers)[2] <- "type"
+names(triggers)[3] <- "id"
+names(triggers)[4] <- "customEvent"
+
+#Add extra row to triggers for the all pages bit (It is set up differently, so it needs to be added in another way)
+triggers <- add_row(triggers,name = "All Pages", type = "pageview", id = "2147479553", customEvent = "Pageview")
+
+#Clean unsued dataframes (Really not required)
+rm(triggerID,triggerName,triggerType, triggerRulesDF)
+
+####### Add Variables
+
+#Extract all variables
+variablesList <- gtm_variables_list(Account,GTMID)
+
+#Extract namem and type
+
+variablesName <- data.frame(variablesList[["variables"]][["name"]])
+variablestype <- data.frame(variablesList[["variables"]][["type"]])
+
+#Building variable dataframe
+totalRows <- as.integer(nrow(variablestype))
+counterRows <- 0
+variableRulesDF <- data.frame("")
+names(variableRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  variableRules <- variablesList[["variables"]][["parameter"]][[counterRows]][["key"]]
+  variableRules <- paste( unlist(variableRules), collapse=' & ')
+  variableRulesDF <- add_row(variableRulesDF,rule = variableRules)
+}
+variableRulesDF <- data.frame(variableRulesDF[-1, ])
+
+variables <- data.frame(c(variablesName,variablestype,variableRulesDF))
+names(variables)[1] <- "name"
+names(variables)[2] <- "type"
+names(variables)[3] <- "Rule"
+
+#Variables
+totalRows <- as.integer(nrow(variablestype))
+counterRows <- 0
+variableRulesDF <- data.frame("")
+names(variableRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  variableRules <- variablesList[["variables"]][["parameter"]][[counterRows]][["value"]]
+  variableRules <- paste( unlist(variableRules), collapse='')
+  variableRulesDF <- add_row(variableRulesDF,rule = variableRules)
+}
+variableRulesValue <- data.frame(variableRulesDF[-1, ])
+
+variables <- data.frame(c(variables,variableRulesValue))
+names(variables)[4] <- "Value"
+
+rm(variablesName,variablestype,variablesList,variableRulesValue, variableRulesDF,GTMContainer)
+
+#Clean variables
+variables$Value <- gsub("2false", "", variables$Value, ignore.case = FALSE, perl = FALSE,
+                        fixed = FALSE, useBytes = FALSE)
+
+###### Save the data in to be used in a markdown document
+save(tags, triggers, variables, file = "gtmInfo.RData")
+
+
+###### Pull down GDPR Framework from a Google Sheet
+#Link for copypaste: https://docs.google.com/spreadsheets/d/1SJ7-A9qZK8HdCVpGPqLTSmySPkJuz1dIQs3i2Ik3Shs/edit#gid=0
+gdprFramework <- googlesheets::gs_title("gdprFramework")
+gdprFramework <- gs_read(gdprFramework, ws = "Sheet1")
+
+#Check if tags contains any of the tags in the container and add them to a new dataframe
+GDPRTABLE <- data.frame()
+GDPRTABLE <- merge(gdprFramework,GDPRTABLE)
+
+
+#Facebook
+containsFacebook <- str_count(tags$name, pattern = ".*(f|F)acebook.*")
+containsFacebook <- sum(containsFacebook)
+if (containsFacebook >= 1) {
+  a <- gdprFramework[2,]
+  GDPRTABLE <- rbind(GDPRTABLE,a)
+  
+} 
+
+containsAdForm <- str_count(tags$name, pattern = ".*(a|A)d(F|F)orm.*")
+containsAdForm <- sum(containsAdForm)
+if (containsAdForm >= 1) {
+  b <- gdprFramework[1,]
+  GDPRTABLE <- rbind(GDPRTABLE,b)
+  
+  
+} 
+
+containsGoogle <- str_count(tags$name, pattern = ".*((g|G)oogle)|ga|GAID.*")
+containsGoogle <- sum(containsGoogle)
+if (containsGoogle >= 1) {
+  c <- gdprFramework[1,]
+  GDPRTABLE <- rbind(GDPRTABLE,c)
+  
+
+} 
+
+containsSleeknote <- str_count(tags$name, pattern = ".*(s|S)leeknote.*")
+containsSleeknote <- sum(containsSleeknote)
+if (containsSleeknote >= 1) {
+  d <- gdprFramework[4,]
+  GDPRTABLE <- rbind(GDPRTABLE,d)
+  
+} 
+#And so on, and so on - The most important thing is to build a library with as many examples as possible!
+#Save the table so it can be visualized
+save(GDPRTABLE, file = "GDPRTABLE.RData")
+
+#Remove things that you are not using to get a better overview
+rm(a,b,c,d,e,f,g,h,i,j,k,l)
