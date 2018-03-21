@@ -1,0 +1,313 @@
+---
+title: Google Tag Manager GDPR Documentation
+author: By Danny Mawani Olsen
+date: Measurecamp 2018
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    css: css.css
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    
+---
+#Introduction
+This document is intended as a quickstart to build your own GDPR oriented GTM documentation for the DPO's attached to your organization. Feel free to copy, steal and improve it the way you like. Please reshare it with the measure community should you make improvements =)
+
+#The code for extracting everything
+This is the ```R``` code for extracting the tags, triggers and variables for your GTM setup. 
+
+## Installing libraries
+The first part revolves around getting all the libraries installed.
+```{r,eval=F, echo=T}
+install.packages("tibble")
+library(tibble)
+install.packages('devtools')
+devtools::install_github("sailthru/tidyjson")
+devtools::install_github('IronistM/googleTagManageR')
+library(googleTagManageR)
+library(plyr)
+library(googleAuthR)
+library(googlesheets)
+library(stringr)
+```
+
+##Authenticating
+To authenticate you need to have access to the data that you will pull. To get a better understanding of this process i recommend to read up upon [Mark Edmonsons](https://www.linkedin.com/in/markpeteredmondson) guide for [Google Authr](http://code.markedmondson.me/googleAuthR/articles/google-authentication-types.html)
+
+```{r,eval=F, echo=T}
+#Set your clientID and Client Secret
+options("googleAuthR.client_id" = "235176965645-vj1gtkrps54hecd5205p9k70ljr6lg4o.apps.googleusercontent.com")
+options("googleAuthR.client_secret" = "lEkTPsrx3T3wZTIJiB0q2I43")
+
+#all the libraries you are going to need + Google Analytics should you need to do something there
+need <- c("https://www.googleapis.com/auth/analytics",
+          "https://www.googleapis.com/auth/analytics.edit",
+          "https://www.googleapis.com/auth/analytics.manage.users",
+          "https://www.googleapis.com/auth/analytics.manage.users.readonly",
+          "https://www.googleapis.com/auth/analytics.provision",
+          "https://www.googleapis.com/auth/analytics.readonly",
+          "https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.appdata",
+          "https://www.googleapis.com/auth/drive.file",
+          "https://www.googleapis.com/auth/drive.metadata",
+          "https://www.googleapis.com/auth/drive.metadata.readonly",
+          "https://www.googleapis.com/auth/drive.photos.readonly",
+          "https://www.googleapis.com/auth/drive.readonly",
+          "https://www.googleapis.com/auth/drive.scripts",
+          "https://www.googleapis.com/auth/webmasters.readonly",
+          "https://www.googleapis.com/auth/webmasters",
+          "https://www.googleapis.com/auth/tagmanager.delete.containers",
+          "https://www.googleapis.com/auth/tagmanager.edit.containers",
+          "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+          "https://www.googleapis.com/auth/tagmanager.manage.accounts",
+          "https://www.googleapis.com/auth/tagmanager.manage.users",
+          "https://www.googleapis.com/auth/tagmanager.publish",
+          "https://www.googleapis.com/auth/tagmanager.readonly"
+          )
+
+#setting scopes and authenticating
+options(googleAuthR.scopes.selected = need)
+gar_auth()
+
+```
+
+##Extracting all GTM ID's and finding the once you are looking for
+To extract all the values you need from your Google Tag Manager account, we need to figure out what the account number and the account ID is called and set it as a static variable:
+```{r,eval=F, echo=T}
+#Get ID's and find the account you are looking for
+googleTagManageR::gtm_accounts_list()
+
+#Select the account ID
+Account <- "123456"
+#Find the container
+GTMContainer <- gtm_containers_list(Account)
+GTMID <- "7891012"
+```
+
+##Extracting the information
+```{r,eval=F, echo=T}
+# tags
+tags <- gtm_tags_list(Account,GTMID)
+tags$accountId <- NULL
+tags$containerId <- NULL
+tags$tagId <- NULL
+
+#Triggers
+triggers <- gtm_triggers_list(Account,GTMID)
+triggerName <- data.frame(triggers[["triggers"]][["name"]])
+triggerType <- data.frame(triggers[["triggers"]][["type"]])
+triggerID <- data.frame(triggers[["triggers"]][["triggerId"]])
+
+#Trigger rules
+
+#Make a while loop to add the same extraction for all trigger rules
+totalRows <- as.integer(nrow(triggerName))
+counterRows <- 0
+triggerRulesDF <- data.frame("")
+names(triggerRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  triggerRules <- triggers[["triggers"]][["customEventFilter"]][[counterRows]][["parameter"]][[1]][["value"]]
+  triggerRules <- paste( unlist(triggerRules), collapse=' matches: ')
+  triggerRulesDF <- add_row(triggerRulesDF,rule = triggerRules)
+}
+#create dataframe for the trigger rules that describes all custom events
+triggerRulesDF <- data.frame(triggerRulesDF[-1, ])
+
+#combine things into a new dataframe
+triggers <- data.frame(c(triggerName,triggerType,triggerID,triggerRulesDF))
+
+#Rename columns to something pretty
+names(triggers)[1] <- "name"
+names(triggers)[2] <- "type"
+names(triggers)[3] <- "id"
+names(triggers)[4] <- "customEvent"
+
+#Add extra row to triggers for the all pages bit (It is set up differently, so it needs to be added in another way)
+triggers <- add_row(triggers,name = "All Pages", type = "pageview", id = "2147479553", customEvent = "Pageview")
+
+#Clean unsued dataframes (Really not required)
+rm(triggerID,triggerName,triggerType, triggerRulesDF)
+
+####### Add Variables
+
+#Extract all variables
+variablesList <- gtm_variables_list(Account,GTMID)
+
+#Extract namem and type
+
+variablesName <- data.frame(variablesList[["variables"]][["name"]])
+variablestype <- data.frame(variablesList[["variables"]][["type"]])
+
+#Building variable dataframe
+totalRows <- as.integer(nrow(variablestype))
+counterRows <- 0
+variableRulesDF <- data.frame("")
+names(variableRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  variableRules <- variablesList[["variables"]][["parameter"]][[counterRows]][["key"]]
+  variableRules <- paste( unlist(variableRules), collapse=' & ')
+  variableRulesDF <- add_row(variableRulesDF,rule = variableRules)
+}
+variableRulesDF <- data.frame(variableRulesDF[-1, ])
+
+variables <- data.frame(c(variablesName,variablestype,variableRulesDF))
+names(variables)[1] <- "name"
+names(variables)[2] <- "type"
+names(variables)[3] <- "Rule"
+
+#Variables
+totalRows <- as.integer(nrow(variablestype))
+counterRows <- 0
+variableRulesDF <- data.frame("")
+names(variableRulesDF)[1] <- "rule"
+
+while (counterRows < totalRows) {
+  counterRows <- counterRows+1  
+  variableRules <- variablesList[["variables"]][["parameter"]][[counterRows]][["value"]]
+  variableRules <- paste( unlist(variableRules), collapse='')
+  variableRulesDF <- add_row(variableRulesDF,rule = variableRules)
+}
+variableRulesValue <- data.frame(variableRulesDF[-1, ])
+
+variables <- data.frame(c(variables,variableRulesValue))
+names(variables)[4] <- "Value"
+
+rm(variablesName,variablestype,variablesList,variableRulesValue, variableRulesDF,GTMContainer)
+
+#Clean variables
+variables$Value <- gsub("2false", "", variables$Value, ignore.case = FALSE, perl = FALSE,
+                        fixed = FALSE, useBytes = FALSE)
+
+###### Save the data in to be used in a markdown document
+save(tags, triggers, variables, file = "gtmInfo.RData")
+```
+
+##Compare your downloaded data with a prefilled GDRP template
+This part takes a list of prefilled GDPR oriented documentation, and compare it with the tags that has been pulled down through the API.
+
+Unfortunately, I do not have a full list of prefilled values for the most common tags, so you are on your own here. I will however be presenting a framework, that should make it easier to create your own documentation for the individual tags in the next subsection:
+
+###Bonus feature: Pulling a framework down from a Google Sheet
+
+```{r,eval=F, echo=T}
+
+#Link for copypaste: https://docs.google.com/spreadsheets/d/1SJ7-A9qZK8HdCVpGPqLTSmySPkJuz1dIQs3i2Ik3Shs/edit#gid=0
+gdprFramework <- googlesheets::gs_title("gdprFramework")
+gdprFramework <- gs_read(gdprFramework, ws = "Sheet1")
+```
+
+##Comparing your Framework with tags on your site
+This part is quite simple: If your premade GDPR oriented documentation matches the tags in your Google Tag Manager setup, then add it do a new dataframe:
+
+```{r,eval=F, echo=T}
+#Check if tags contains any of the tags in the container and add them to a new dataframe
+GDPRTABLE <- data.frame()
+GDPRTABLE <- merge(gdprFramework,GDPRTABLE)
+
+
+#Facebook
+containsFacebook <- str_count(tags$name, pattern = ".*(f|F)acebook.*")
+containsFacebook <- sum(containsFacebook)
+if (containsFacebook >= 1) {
+  a <- gdprFramework[2,]
+  GDPRTABLE <- rbind(GDPRTABLE,a)
+  
+} 
+
+containsAdForm <- str_count(tags$name, pattern = ".*(a|A)d(F|F)orm.*")
+containsAdForm <- sum(containsAdForm)
+if (containsAdForm >= 1) {
+  b <- gdprFramework[1,]
+  GDPRTABLE <- rbind(GDPRTABLE,b)
+  
+  
+} 
+
+containsGoogle <- str_count(tags$name, pattern = ".*((g|G)oogle)|ga|GAID.*")
+containsGoogle <- sum(containsGoogle)
+if (containsGoogle >= 1) {
+  c <- gdprFramework[1,]
+  GDPRTABLE <- rbind(GDPRTABLE,c)
+  
+
+} 
+
+containsSleeknote <- str_count(tags$name, pattern = ".*(s|S)leeknote.*")
+containsSleeknote <- sum(containsSleeknote)
+if (containsSleeknote >= 1) {
+  d <- gdprFramework[4,]
+  GDPRTABLE <- rbind(GDPRTABLE,d)
+  
+} 
+
+save(GDPRTABLE, file = "GDPRTABLE.RData")
+```
+And so on, and so on - The most important thing is to build a library with as many examples as possible.
+
+#Visualizing it with R Markdown
+As all the data is pulled, now it can be visualized, and produced for all the accounts that you are producing documentation for, while also being able to reproduce the document, should new tags be deployed in the future.
+
+##Loading the data and libraries / packages
+The only thing you need to think of is to remember to load all the libraries / packages that you will need, along with the data you are working with:
+
+```{r echo=TRUE}
+load("gtmInfo.RData")
+load("GDPRTABLE.RData")
+library(knitr)
+library(kableExtra)
+```
+
+## Visualizing it in tables
+This can be done simply with **Kable** function:
+
+###Tags
+```{r echo=TRUE}
+kable(tags, "html") %>%
+  kable_styling(full_width = T)
+```
+
+
+
+### Triggers
+```{r}
+kable(triggers, "html") %>%
+  kable_styling(full_width = T)
+```
+
+
+###Variables
+```{r}
+#I have masked the UAID - Remove the next line to de-mask it 
+variables$Value <- gsub("UA.*","UA-12345",variables$Value)
+kable(variables, "html") %>%
+  kable_styling(full_width = T)
+```
+
+###The GDPR oriented framework
+At last, the framework built, can be embedded in the documentation
+```{r}
+knitr::kable(GDPRTABLE, "html") %>%
+  kable_styling(full_width = T)
+
+
+#Add the following CSS into the file before publishing:
+#.table{
+#width:100px;
+#display: inline-block;
+#}
+#name it css.css and save it
+```
+
+#Conclusion
+This is my take on how to help the DPO's get a bit more insight to what is being fired from Google Tag Manager and when, while making the process automated, and aligned with a framework.
+
+If you have any feedback, improvements or questions, feel free to ask.
+
+
+
