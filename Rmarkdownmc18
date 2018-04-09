@@ -38,8 +38,8 @@ To authenticate you need to have access to the data that you will pull. To get a
 
 ```{r,eval=F, echo=T}
 #Set your clientID and Client Secret
-options("googleAuthR.client_id" = "235176965645-vj1gtkrps54hecd5205p9k70ljr6lg4o.apps.googleusercontent.com")
-options("googleAuthR.client_secret" = "lEkTPsrx3T3wZTIJiB0q2I43")
+options("googleAuthR.client_id" = "235176965645-v2342343234tkrps54hecd5205p9k70ljr6lg4o.apps.googleusercontent.com")
+options("googleAuthR.client_secret" = "lE1kTPsrx3Tqweqwe243JiB0q2I43")
 
 #all the libraries you are going to need + Google Analytics should you need to do something there
 need <- c("https://www.googleapis.com/auth/analytics",
