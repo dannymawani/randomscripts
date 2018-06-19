@@ -1,0 +1,71 @@
+<script>
+//Define cookie functions - used to create and read cookies
+function createCookie(name,value,days) {
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime()+(days*24*60*60*1000));
+        var expires = "; expires="+date.toGMTString();
+    }
+    else var expires = "";
+    document.cookie = name+"="+value+expires+"; path=/"; //Regular cookie
+    
+    //Create a cookie for main domain (coded for root domain and www. domain only)
+    var domain = location.hostname;
+    document.cookie = name+"="+value+expires+"; path=/;domain="+domain+";"; //Regular cookie
+    var domain = domain.replace("www","");
+    document.cookie = name+"="+value+expires+"; path=/;domain="+domain+";";
+}
+
+function readCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function eraseCookie(name) {
+    createCookie(name,"",-1);
+}
+
+
+//Check if internal or external IP
+function getIP(){
+	var HttpClient = function() {
+	    this.get = function(aUrl, aCallback) {
+	        var anHttpRequest = new XMLHttpRequest();
+	        anHttpRequest.onreadystatechange = function() { 
+	            if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200)
+	                aCallback(anHttpRequest.responseText);
+	        }
+
+	        anHttpRequest.open( "GET", aUrl, true );            
+	        anHttpRequest.send( null );
+	    }
+	}
+
+	var client = new HttpClient();
+	client.get('https://api.ipify.org?format=json', function(response) {
+		var result = JSON.parse(response);
+		var ip = result.ip;
+      	var ipInternal = /^(123.332.4.1|345.512.6.1)$/i; //replace with your own IP adresses
+		if(ip.search(ipInternal) >=0) {
+			//Is internal IP
+			createCookie("isInternal",1,30); //Save for 30 days
+			eraseCookie("isExternal");
+			console.log("Is internal IP: " + ip);
+		} else {
+			//Is external IP
+			createCookie("isExternal",1,7); //Save for 7 day
+			eraseCookie("isInternal");
+			console.log("Is external IP: " + ip);
+		}	
+	});	
+}
+getIP();
+
+  
+</script>
