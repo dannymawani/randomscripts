@@ -1,0 +1,36 @@
+#Load pakker
+library(ids)
+library(dplyr)
+library(stringi)
+#sæt dit nummer her
+n <- 20000
+#generer dataframe
+ID <- data.frame(random_id(n = n, bytes = 4, use_openssl = TRUE))
+names(ID) <- c("CustomerID")
+sum(duplicated(ID$ID))
+
+
+
+#Lav fake dates
+rdate <- function(x,
+                  min = paste0(format(Sys.Date()-(1*365), '%Y'), '-01-01'),
+                  max = paste0(format(Sys.Date(), '%Y'), '-12-31'),
+                  sort = TRUE) {
+  
+  dates <- sample(seq(as.Date(min), as.Date(max), by = "day"), x, replace = TRUE)
+  if (sort == TRUE) {
+    sort(dates)
+  } else {
+    dates
+  }
+  
+}
+
+#tilføj fake dates til DF
+ID$date <- rdate(n)
+
+#tilføj cookie id
+ID$GA <- paste("GA1.2.",stri_rand_strings(n, 10, pattern = "[0-9]"),".",stri_rand_strings(n, 10, pattern = "[0-9]"), sep = "")
+ID$pageviews <- stri_rand_strings(n, 1, pattern = "[4-7]")
+ID$sessions <- stri_rand_strings(n, 1, pattern = "[1-3]")
+
