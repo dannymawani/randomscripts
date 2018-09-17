@@ -43,4 +43,5 @@ email <- function(x) {
 
 ID$email <- apply(ID, 1, email)
 
+ID$email <- tolower(ID$email)
 
