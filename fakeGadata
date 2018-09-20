@@ -1,11 +1,16 @@
+#install stuff
+install.packages("ids")
+install.packages("dplyr")
+install.packages("stringi")
+
 #Load packages
 library(ids)
 library(dplyr)
 library(stringi)
 #Add number of rows
-n <- 5000
+n <- 300
 #generate dataframe
-ID <- data.frame(random_id(n = n, bytes = 4, use_openssl = TRUE))
+ID <- data.frame(random_id(n = n, bytes = 1, use_openssl = TRUE))
 names(ID) <- c("CustomerID")
 sum(duplicated(ID$ID))
 
