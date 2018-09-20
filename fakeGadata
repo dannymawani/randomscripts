@@ -1,12 +1,3 @@
-#install stuff
-#install.packages("ids")
-#install.packages("dplyr")
-#install.packages("stringi")
-
-#Load packages
-library(ids)
-library(dplyr)
-library(stringi)
 #Add number of rows
 n <- 300
 #generate dataframe
@@ -41,12 +32,11 @@ ID$sessions <- stri_rand_strings(n, 1, pattern = "[1-3]")
 
 #emails
 #email <- function(x) {
-  #paste(adjective_animal(n = 1, n_adjectives = 0, style = "title",
-                         #max_len = 10),"@",adjective_animal(n = 1, n_adjectives = 0, style = "title",
-                                                             #max_len = 10),".com", sep = "")
+#paste(adjective_animal(n = 1, n_adjectives = 0, style = "title",
+#max_len = 10),"@",adjective_animal(n = 1, n_adjectives = 0, style = "title",
+#max_len = 10),".com", sep = "")
 #}
 
 #ID$email <- apply(ID, 1, email)
 
 #ID$email <- tolower(ID$email)
-
