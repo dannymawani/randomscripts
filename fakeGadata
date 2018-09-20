@@ -1,7 +1,7 @@
 #install stuff
-#install.packages("ids")
-#install.packages("dplyr")
-#install.packages("stringi")
+install.packages("ids")
+install.packages("dplyr")
+install.packages("stringi")
 
 #Load packages
 library(ids)
