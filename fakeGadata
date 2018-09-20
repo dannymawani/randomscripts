@@ -1,3 +1,14 @@
+#install stuff
+#install.packages("ids")
+#install.packages("dplyr")
+#install.packages("stringi")
+
+#Load packages
+library(ids)
+library(dplyr)
+library(stringi)
+
+
 #Add number of rows
 n <- 300
 #generate dataframe
