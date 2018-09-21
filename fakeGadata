@@ -39,6 +39,8 @@ library(ggplot2)
 if (!require(kableExtra)) install.packages("kableExtra")
 library(kableExtra)
 
+if (!require(knitr)) install.packages("knitr")
+library(knitr)
 
 
 #Add number of rows
