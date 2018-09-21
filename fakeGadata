@@ -36,6 +36,11 @@ library(fortunes)
 if (!require(ggplot2)) install.packages("ggplot2")
 library(ggplot2)
 
+if (!require(kableExtra)) install.packages("kableExtra")
+library(kableExtra)
+
+
+
 #Add number of rows
 n <- 300
 #generate dataframe
