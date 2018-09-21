@@ -24,6 +24,15 @@ library(beepr)
 if (!require(dplyr)) install.packages("dplyr")
 library(dplyr)
 
+if (!require(xml2)) install.packages("xml2")
+library(xml2)
+
+if (!require(rvest)) install.packages("rvest")
+library(rvest)
+
+if (!require(fortunes)) install.packages("fortunes")
+library(fortunes)
+
 #Add number of rows
 n <- 300
 #generate dataframe
