@@ -1,14 +1,28 @@
 #install stuff
-install.packages("ids")
-install.packages("dplyr")
-install.packages("stringi")
-install.packages("beepr")
+#install.packages("ids")
+#install.packages("dplyr")
+#install.packages("stringi")
+#install.packages("beepr")
 
 #Load packages
+#library(ids)
+#library(dplyr)
+#library(stringi)
+
+if (!require(ids)) install.packages("ids")
 library(ids)
+
+if (!require(dplyr)) install.packages("dplyr")
 library(dplyr)
+
+if (!require(stringi)) install.packages("stringi")
 library(stringi)
 
+if (!require(beepr)) install.packages("beepr")
+library(beepr)
+
+if (!require(dplyr)) install.packages("dplyr")
+library(dplyr)
 
 #Add number of rows
 n <- 300
@@ -42,6 +56,4 @@ ID$GA <- paste("GA1.2.",stri_rand_strings(n, 10, pattern = "[0-9]"),".",stri_ran
 ID$pageviews <- stri_rand_strings(n, 1, pattern = "[4-7]")
 ID$sessions <- stri_rand_strings(n, 1, pattern = "[1-3]")
 
-install.packages("beepr")
-library(beepr)
 beep(4)
