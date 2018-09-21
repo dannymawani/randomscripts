@@ -33,6 +33,9 @@ library(rvest)
 if (!require(fortunes)) install.packages("fortunes")
 library(fortunes)
 
+if (!require(ggplot2)) install.packages("ggplot2")
+library(ggplot2)
+
 #Add number of rows
 n <- 300
 #generate dataframe
