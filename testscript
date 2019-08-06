@@ -1,0 +1,10 @@
+dataset <- read_csv("Tablets Report - Report.csv", 
+                    +     col_types = cols(`Completed at` = col_skip(), 
+                                           +         `Completed before deadline` = col_skip(), 
+                                           +         `Completed renewals` = col_skip(), 
+                                           +         Deadline = col_skip(), `E-mail` = col_skip(), 
+                                           +         `Employee ID` = col_character(), 
+                                           +         `Expire date` = col_skip(), Name = col_skip(), 
+                                           +         Score = col_integer(), `Started at` = col_skip(), 
+                                           +         `Time spent` = col_time(format = "%H:%M:%S"), 
+                                           +         `Total renewal periods` = col_skip()))
